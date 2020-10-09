@@ -62,6 +62,7 @@ use  mpp_mod,           only : input_nml_file
 use  mpp_domains_mod,   only : CYCLIC_GLOBAL_DOMAIN, mpp_get_compute_domain
 use  mpp_domains_mod,   only : domain2d, mpp_define_layout, mpp_define_domains
 use  mpp_domains_mod,   only : mpp_get_ntile_count, mpp_get_tile_id, mpp_get_current_ntile
+use  mpp_domains_mod,   only : mpp_define_io_domain
 
 use time_manager_mod,   only : time_type
 
@@ -262,6 +263,7 @@ subroutine land_model_init (cplr2land, land2cplr, time_init, time, dt_fast, dt_s
         call mpp_define_domains((/1,nlon,1,nlat/), layout, domain, &
              xflags = CYCLIC_GLOBAL_DOMAIN, xhalo=1, yhalo=1, name='land model')
      end if
+     call mpp_define_io_domain (domain, (/ 1, 1 /))
   else
      call define_cube_mosaic('LND', domain, layout, halo=1)
   endif
