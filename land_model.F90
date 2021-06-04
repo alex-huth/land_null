@@ -73,12 +73,12 @@ use tracer_manager_mod, only : register_tracers
 use field_manager_mod,  only : MODEL_LAND
 
 use          fms_mod,  only : write_version_number, error_mesg, FATAL, mpp_npes, stdout
-use          fms_mod,  only : open_namelist_file, check_nml_error, file_exist, close_file
-use       fms_io_mod,  only : parse_mask_table, set_domain, nullify_domain
+use          fms_mod,  only : check_nml_error
+use      fms2_io_mod,  only : parse_mask_table, file_exists
 
-use         grid_mod,  only : get_grid_ntiles, get_grid_size, define_cube_mosaic
-use         grid_mod,  only : get_grid_cell_vertices, get_grid_cell_centers
-use         grid_mod,  only : get_grid_cell_area, get_grid_comp_area
+use        grid2_mod,  only : get_grid_ntiles, get_grid_size, define_cube_mosaic
+use        grid2_mod,  only : get_grid_cell_vertices, get_grid_cell_centers
+use        grid2_mod,  only : get_grid_cell_area, get_grid_comp_area
 
 implicit none
 private
@@ -216,20 +216,11 @@ subroutine land_model_init (cplr2land, land2cplr, time_init, time, dt_fast, dt_s
   real, allocatable, dimension(:,:)  :: glon, glat
   integer, allocatable, dimension(:) :: tile_ids
   integer :: ntracers, ntprog, ndiag, face, npes_per_tile
-  integer :: namelist_unit, io, ierr, stdoutunit
+  integer :: io, ierr, stdoutunit
 
 !--- read namelist
-#ifdef INTERNAL_FILE_NML
-   read (input_nml_file, land_model_nml, iostat=io)
-#else
-   namelist_unit = open_namelist_file()
-   ierr=1
-   do while (ierr /= 0)
-     read(namelist_unit, nml=land_model_nml, iostat=io, end=20)
-     ierr = check_nml_error (io, 'land_model_nml')
-   enddo
-   20 call close_file (namelist_unit)
-#endif
+  read (input_nml_file, land_model_nml, iostat=io)
+  ierr = check_nml_error (io, 'land_model_nml')
 
   stdoutunit = stdout()
 
@@ -240,7 +231,7 @@ subroutine land_model_init (cplr2land, land2cplr, time_init, time, dt_fast, dt_s
   call get_grid_ntiles('LND',ntiles)
   call get_grid_size('LND',1,nlon,nlat)
  
-  if(file_exist(mask_table)) then
+  if(file_exists(mask_table)) then
      if(ntiles > 1) then
         call error_mesg('land_model_init', &
           'file '//trim(mask_table)//' should not exist when ntiles is not 1', FATAL)
@@ -268,7 +259,6 @@ subroutine land_model_init (cplr2land, land2cplr, time_init, time, dt_fast, dt_s
      call define_cube_mosaic('LND', domain, layout, halo=1)
   endif
 
-  call set_domain(domain)
   call mpp_get_compute_domain(domain, is,ie,js,je)
 
   land2cplr%domain = domain
@@ -288,7 +278,6 @@ subroutine land_model_init (cplr2land, land2cplr, time_init, time, dt_fast, dt_s
   call get_grid_cell_area    ('LND',face,cellarea,domain)
   call get_grid_comp_area    ('LND',face,area,domain)
   frac = area/cellarea
-  call nullify_domain()  
 
   allocate(land2cplr%tile_size(is:ie,js:je,1))
   land2cplr%tile_size(is:ie,js:je,1) = frac(is:ie,js:je)
