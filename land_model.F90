@@ -169,8 +169,8 @@ type :: land_data_type
      discharge_snow_heat => NULL()     ! sensible heat of discharge_snow (0 C datum)
 
    real, pointer, dimension(:,:) :: &  ! (lon, lat)
-     IS_smb           => NULL(),  & ! surface mass flux to ice sheet
-     IS_smb_heat      => NULL()     ! sensible heat of IS_smb (0 C datum)
+     IS_adot          => NULL()      ! surface mass flux to ice sheet
+     !IS_adot_heat     => NULL()     ! sensible heat of IS_adot (0 C datum)
 
    logical, pointer, dimension(:,:,:):: &
         mask => NULL()               ! true if land
@@ -335,8 +335,8 @@ subroutine land_model_init (cplr2land, land2cplr, time_init, time, dt_fast, dt_s
   allocate(land2cplr%discharge_heat(is:ie,js:je))
   allocate(land2cplr%discharge_snow(is:ie,js:je))
   allocate(land2cplr%discharge_snow_heat(is:ie,js:je))
-  allocate(land2cplr%IS_smb     (is:ie,js:je))
-  allocate(land2cplr%IS_smb_heat(is:ie,js:je))
+  allocate(land2cplr%IS_adot     (is:ie,js:je))
+  !allocate(land2cplr%IS_adot_heat(is:ie,js:je))
 
   land2cplr%mask              = .FALSE.
   land2cplr%t_surf            = 280.0
@@ -354,8 +354,8 @@ subroutine land_model_init (cplr2land, land2cplr, time_init, time, dt_fast, dt_s
   land2cplr%discharge_heat    = 0.0
   land2cplr%discharge_snow    = 0.0
   land2cplr%discharge_snow_heat = 0.0
-  land2cplr%IS_smb         = 0.0
-  land2cplr%IS_smb_heat    = 0.0
+  land2cplr%IS_adot         = 0.0
+  !land2cplr%IS_adot_heat    = 0.0
 
   allocate(cplr2land%t_flux(is:ie,js:je,1) )
   allocate(cplr2land%lw_flux(is:ie,js:je,1) )
