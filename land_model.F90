@@ -166,7 +166,9 @@ type :: land_data_type
      discharge           => NULL(),  & ! liquid water flux from land to ocean
      discharge_heat      => NULL(),  & ! sensible heat of discharge (0 C datum)
      discharge_snow      => NULL(),  & ! solid water flux from land to ocean
-     discharge_snow_heat => NULL()     ! sensible heat of discharge_snow (0 C datum)
+     discharge_snow_heat => NULL(),  & ! sensible heat of discharge_snow (0 C datum)
+     IS_adot_sg          => NULL(),  & ! surface mass flux to ice sheet, (kg m-2 s-1)
+     IS_mask_sg          => NULL()     ! ice sheet mask for passing mass fluxes via the coupler to MOM6
 
    logical, pointer, dimension(:,:,:):: &
         mask => NULL()               ! true if land
@@ -196,7 +198,7 @@ contains
 
 ! ============================================================================
 subroutine land_model_init (cplr2land, land2cplr, time_init, time, dt_fast, dt_slow, &
-                            glon_bnd, glat_bnd, Domain_in)
+                            glon_bnd, glat_bnd, Domain_in, ice_sheet_calving, ice_sheet_enabled)
 
   type(atmos_land_boundary_type), intent(inout) :: cplr2land ! boundary data
   type(land_data_type)          , intent(inout) :: land2cplr ! boundary data
@@ -206,6 +208,8 @@ subroutine land_model_init (cplr2land, land2cplr, time_init, time, dt_fast, dt_s
   type(time_type), intent(in) :: dt_slow   ! slow time step
   real, dimension(:,:), optional :: glon_bnd, glat_bnd
   type(domain2d), optional :: Domain_in
+  logical, intent(in), optional :: ice_sheet_calving   ! enable ice sheet calving
+  logical, intent(in), optional :: ice_sheet_enabled   ! enable ice sheet surface forcing
 
  ! ---- local vars
   integer :: nlon, nlat ! size of global grid in lon and lat directions
@@ -217,6 +221,12 @@ subroutine land_model_init (cplr2land, land2cplr, time_init, time, dt_fast, dt_s
   integer, allocatable, dimension(:) :: tile_ids
   integer :: ntracers, ntprog, ndiag, face, npes_per_tile
   integer :: io, ierr, stdoutunit
+  logical :: IS_calving = .false. ! If true, the ice shelves are in charge of ice sheet calving
+  logical :: IS_enabled = .false. ! If true, mass fluxes are passed to the
+                                  ! coupler for use in a separate ice sheet model
+
+  if (PRESENT(ice_sheet_calving)) IS_calving=ice_sheet_calving
+  if (PRESENT(ice_sheet_enabled)) IS_enabled=ice_sheet_enabled
 
 !--- read namelist
   read (input_nml_file, land_model_nml, iostat=io)
@@ -331,6 +341,8 @@ subroutine land_model_init (cplr2land, land2cplr, time_init, time, dt_fast, dt_s
   allocate(land2cplr%discharge_heat(is:ie,js:je))
   allocate(land2cplr%discharge_snow(is:ie,js:je))
   allocate(land2cplr%discharge_snow_heat(is:ie,js:je))
+  if (IS_enabled)                 allocate(land2cplr%IS_adot_sg(is:ie,js:je))
+  if (IS_enabled .or. IS_calving) allocate(land2cplr%IS_mask_sg(is:ie,js:je))
 
   land2cplr%mask              = .FALSE.
   land2cplr%t_surf            = 280.0
@@ -348,6 +360,8 @@ subroutine land_model_init (cplr2land, land2cplr, time_init, time, dt_fast, dt_s
   land2cplr%discharge_heat    = 0.0
   land2cplr%discharge_snow    = 0.0
   land2cplr%discharge_snow_heat = 0.0
+  if (IS_enabled)                 land2cplr%IS_adot_sg = 0.0
+  if (IS_enabled .or. IS_calving) land2cplr%IS_mask_sg = 0.0
 
   allocate(cplr2land%t_flux(is:ie,js:je,1) )
   allocate(cplr2land%lw_flux(is:ie,js:je,1) )
